@@ -133,7 +133,7 @@ function timeAugmentTokens(tokens) {
 // SYLLABLE
 // PERIOD
 // COMMA
-function readTokens(inputString) {
+function makeKeyStream(inputString) {
   var tokenStream = splitOnSpaces(inputString);
   console.log("after spaces:", tokenStream);
   tokenStream = splitOutPunctuation(tokenStream);
@@ -156,12 +156,12 @@ function writeKeyStream(keyStream, i) {
   }
 }
 
-function consoleRead(text) {
-  var keyStream = readTokens(text);
+function consoleSpeak(text) {
+  var keyStream = makeKeyStream(text);
   writeKeyStream(keyStream, 0);
 }
 
 module.exports = {
-  readTokens: readTokens,
-  consoleRead: consoleRead
+  makeKeyStream: makeKeyStream,
+  consoleSpeak: consoleSpeak
 };
