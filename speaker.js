@@ -25,7 +25,34 @@ var WORD = "WORD",
   COMMA = "COMMA",
   LETTER = "LETTER";
 
-function splitOnSpaces(inputString) {
+// A syllabizer function takes a word token ([WORD, "contents"]) and returns
+// an array of syllable tokens
+var defaultSyllablizer = function(wordToken) {
+  return [[SYLLABLE, wordToken[1]]];
+};
+
+var timingTable = {
+  SYLLABLE: 4,
+  SPACE: 2,
+  COMMA: 5,
+  PERIOD: 10
+};
+
+// A timer function takes a token and returns how much time it should take
+var defaultTimer = function(token) {
+  if (token[0] === SYLLABLE) {
+    return timingTable[SYLLABLE] + (token[1].length > 5 ? (token[1].length - 5) / 2 : 0);
+  }
+  return timingTable[token[0]];
+};
+
+function Speaker() {
+  this.syllabizer = defaultSyllablizer;
+  this.timer = defaultTimer;
+  this.letterTiming = 100;
+}
+
+Speaker.prototype.splitOnSpaces = function(inputString) {
   var tokens = [];
 
   var currentWord = "";
@@ -61,9 +88,9 @@ function splitOnSpaces(inputString) {
   }
 
   return tokens;
-}
+};
 
-function splitOutPunctuation(wordTokens) {
+Speaker.prototype.splitOutPunctuation = function(wordTokens) {
   // Only look at the end of words
   var newTokens = [];
 
@@ -90,19 +117,19 @@ function splitOutPunctuation(wordTokens) {
     }
   }
   return newTokens;
-}
+};
 
-function syllablizeWords(tokens) {
-  return _(tokens).map(function(token) {
+Speaker.prototype.syllablizeWords = function(tokens) {
+  return _(tokens).chain().map(function(token) {
     if (token[0] === WORD) {
-      return [SYLLABLE, token[1]];
+      return this.syllabizer(token);
     } else {
-      return token;
+      return [token];
     }
-  });
-}
+  }.bind(this)).flatten(true).value();
+};
 
-function literizeTokens(tokens) {
+Speaker.prototype.literizeTokens = function(tokens) {
   return _(tokens).chain().map(function(token) {
     if (token[0] === SYLLABLE) {
       return _.map(token[1], function(letter) {
@@ -112,20 +139,13 @@ function literizeTokens(tokens) {
       return [token];
     }
   }).flatten(true).value();
-}
-
-var timingTable = {
-  SYLLABLE: 5,
-  SPACE: 2,
-  COMMA: 5,
-  PERIOD: 10
 };
 
-function timeAugmentTokens(tokens) {
+Speaker.prototype.timeAugmentTokens = function(tokens) {
   return _.map(tokens, function(token) {
-    return [token[0], token[1], timingTable[token[0]]];
-  });
-}
+    return [token[0], token[1], this.timer(token)];
+  }.bind(this));
+};
 
 // readTokens produces a stream of tokens. possible tokens are:
 // WORD
@@ -133,35 +153,30 @@ function timeAugmentTokens(tokens) {
 // SYLLABLE
 // PERIOD
 // COMMA
-function makeKeyStream(inputString) {
-  var tokenStream = splitOnSpaces(inputString);
+Speaker.prototype.makeKeyStream = function(inputString) {
+  var tokenStream = this.splitOnSpaces(inputString);
   console.log("after spaces:", tokenStream);
-  tokenStream = splitOutPunctuation(tokenStream);
+  tokenStream = this.splitOutPunctuation(tokenStream);
   console.log("after punctuation", tokenStream);
-  tokenStream = syllablizeWords(tokenStream);
+  tokenStream = this.syllablizeWords(tokenStream);
   console.log("after syllables", tokenStream);
-  tokenStream = timeAugmentTokens(tokenStream);
+  tokenStream = this.timeAugmentTokens(tokenStream);
   console.log("after times", tokenStream);
-  var keyStream = literizeTokens(tokenStream);
+  var keyStream = this.literizeTokens(tokenStream);
 
   return keyStream;
-}
+};
 
-var LETTER_TIMING = 100;
-
-function writeKeyStream(keyStream, i) {
+Speaker.prototype.writeKeyStream = function(keyStream, i) {
   process.stdout.write(keyStream[i][1]);
   if (i + 1 < keyStream.length) {
-    setTimeout(writeKeyStream, keyStream[i][2] * LETTER_TIMING, keyStream, i + 1);
+    setTimeout(this.writeKeyStream.bind(this), keyStream[i][2] * this.letterTiming, keyStream, i + 1);
   }
-}
-
-function consoleSpeak(text) {
-  var keyStream = makeKeyStream(text);
-  writeKeyStream(keyStream, 0);
-}
-
-module.exports = {
-  makeKeyStream: makeKeyStream,
-  consoleSpeak: consoleSpeak
 };
+
+Speaker.prototype.consoleSpeak = function(text) {
+  var keyStream = this.makeKeyStream(text);
+  this.writeKeyStream(keyStream, 0);
+};
+
+module.exports = Speaker;
