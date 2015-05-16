@@ -25,10 +25,10 @@ var WORD = "WORD",
   COMMA = "COMMA",
   LETTER = "LETTER";
 
-// A syllabizer function takes a word token ([WORD, "contents"]) and returns
-// an array of syllable tokens
-var defaultSyllablizer = function(wordToken) {
-  return [[SYLLABLE, wordToken[1]]];
+// A syllabizer function takes a word and returns an array of word parts, each
+// of which is a syllable
+var defaultSyllablizer = function(word) {
+  return [word];
 };
 
 var timingTable = {
@@ -122,7 +122,9 @@ Speaker.prototype.splitOutPunctuation = function(wordTokens) {
 Speaker.prototype.syllablizeWords = function(tokens) {
   return _(tokens).chain().map(function(token) {
     if (token[0] === WORD) {
-      return this.syllabizer(token);
+      return this.syllabizer(token[1]).map(function(wordPart) {
+        return [SYLLABLE, wordPart];
+      });
     } else {
       return [token];
     }
